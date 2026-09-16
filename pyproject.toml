@@ -45,13 +45,9 @@ tag_message = "v{new_version}"
 [tool.bumpver.file_patterns]
 "pyproject.toml" = [
     'version = "{version}"',
-    'current_version = "{version}"',
 ]
 "src/__init__.py" = [
     '__version__ = "{version}"',
-]
-"uv.lock" = [
-    'version = "{version}"',
 ]
 
 [tool.uv]

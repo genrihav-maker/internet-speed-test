@@ -5,6 +5,7 @@ import sys
 import pytest
 
 from src import __version__, speed_test
+from src.main_module import MainModule
 
 
 def _set_argv(monkeypatch, *args: str) -> None:
@@ -60,6 +61,25 @@ def test_cli_ok(monkeypatch, use_test_main_module, file_server, caplog):
 
     assert "скорость" in caplog.text
     assert "МБ/с" in caplog.text
+
+
+def test_cli_all_requests_failed_exits_1(monkeypatch, tmp_path, closed_port_url, capsys):
+    """Если ни один запрос не удался, CLI завершается с ошибкой и кодом 1."""
+    cfg_path = tmp_path / "config.yml"
+    cfg_path.write_text(
+        "logger:\n  stream:\n    log_level: debug\n"
+        "measure:\n  default_runs: 2\n  max_runs: 3\n"
+        "  default_timeout: 5\n  max_timeout: 30\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(speed_test, "MainModule", lambda: MainModule(config_path=cfg_path))
+    _set_argv(monkeypatch, closed_port_url, "-n", "1", "-t", "5")
+
+    with pytest.raises(SystemExit) as exc:
+        speed_test.main()
+
+    assert exc.value.code == 1
+    assert "ни один запрос не выполнился успешно" in capsys.readouterr().out
 
 
 def test_cli_defaults_from_config(monkeypatch, use_test_main_module, file_server, caplog):

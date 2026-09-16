@@ -199,9 +199,12 @@ uv run bumpver show                # текущая версия
 uv run bumpver update --patch     # 1.2.0 -> 1.2.1
 ```
 
-При обновлении bumpver сам правит версию в `pyproject.toml`, создаёт коммит
-(`Bump version ...`) и git-тег (`v<версия>`). Пуш не выполняется (`push = false`),
-запушьте вручную:
+При обновлении bumpver сам правит версию в `pyproject.toml` и
+`src/__init__.py`, создаёт коммит (`бамп версии ...`) и git-тег
+(`v<версия>`). Через `pre_commit_hook` (`scripts/pre_bump_hook.sh`) перед
+коммитом выполняется `uv lock`, поэтому `uv.lock` обновляется и попадает
+в тот же коммит бампа — без отдельных «chore: uv.lock» коммитов.
+Пуш не выполняется (`push = false`), запушьте вручную:
 
 ```bash
 git push origin main --tags

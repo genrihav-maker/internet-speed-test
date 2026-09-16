@@ -3,5 +3,5 @@
 # его в коммит бампа (вызывается bumpver как pre_commit_hook).
 set -euo pipefail
 
-uv lock
+uv lock >/dev/null 2>&1
 git add uv.lock

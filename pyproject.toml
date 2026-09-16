@@ -27,11 +27,14 @@ line-length = 100
 extend-exclude = [".venv", "uv.lock"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "UP", "B", "W"]
+select = ["E", "F", "I", "UP", "B", "W", "D"]
 ignore = ["B008"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["src", "tests"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
 
 [tool.bumpver]
 current_version = "0.0.7"

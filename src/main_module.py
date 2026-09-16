@@ -126,21 +126,31 @@ class MainModule:
         results: list[dict[str, object]] = []
         total_bytes = 0
 
-        self.logger.info("measure start url=%s runs=%d timeout=%d", url, runs, timeout)
-        for _ in range(runs):
+        self.logger.debug("measure start url=%s runs=%d timeout=%d", url, runs, timeout)
+        for idx in range(runs):
             try:
                 size, elapsed = self._download_once(url, timeout)
+                speed_mb_s = size / elapsed / 1024 / 1024
                 results.append(
                     {
                         "size_bytes": size,
                         "elapsed_s": elapsed,
-                        "speed_mb_s": size / elapsed / 1024 / 1024,
+                        "speed_mb_s": speed_mb_s,
                         "error": None,
                     }
                 )
                 total_bytes += size
+                self.logger.debug(
+                    "Запрос %d/%d: %.2f МБ за %.3f с (%.2f МБ/с)",
+                    idx + 1,
+                    runs,
+                    size / 1024 / 1024,
+                    elapsed,
+                    speed_mb_s,
+                )
             except RequestError as exc:
                 results.append(self._failed_result(exc))
+                self.logger.warning("Запрос %d/%d: ОШИБКА — %s", idx + 1, runs, exc)
 
         ok = [r for r in results if r["error"] is None]
         if ok:
@@ -152,8 +162,8 @@ class MainModule:
             avg_speed = 0.0
 
         if ok:
-            self.logger.info(
-                "measure done ok=%d/%d total_bytes=%d avg_speed=%.2f MB/s",
+            self.logger.debug(
+                "measure done ok=%d/%d total_bytes=%d avg_speed=%.2f МБ/с",
                 len(ok),
                 runs,
                 total_bytes,

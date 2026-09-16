@@ -1,0 +1,170 @@
+"""MainModule: супер-класс, владеющий модулями и логикой замера скорости."""
+
+import atexit
+import time
+from pathlib import Path
+from typing import Any
+
+import httpx
+
+from . import __version__
+from .base import OneModule
+from .config import OneConfig
+from .constants import APP_TITLE
+from .exceptions import RequestError
+from .logger import OneLogger
+
+
+class MainModule:
+    """Объединяет модули системы и измеряет скорость интернета.
+
+    Модули объявляются class-level typehint'ами (config, logger) и собираются
+    автоматически в порядке объявления аннотаций: config -> logger.
+    Запуск скрипта: python -m src.speed_test <URL>.
+    """
+
+    title: str = APP_TITLE
+    version: str = __version__
+
+    config: OneConfig
+    logger: OneLogger
+
+    def __init__(
+        self,
+        config_path: str | Path | None = None,
+        **kwargs: Any,
+    ) -> None:
+        """Собирает модули из typehint-аннотаций класса.
+
+        Args:
+            config_path: путь до config.yml (передаётся в OneConfig).
+            **kwargs: параметры модулей, сгруппированные по их именам.
+        """
+        if config_path is not None:
+            kwargs.setdefault("config", {"path": config_path})
+
+        self.kwargs: dict[str, Any] = kwargs
+        self.startup_time: float = time.time()
+
+        for key, module_cls in OneModule.fromtypehint(self.__class__).items():
+            module_kw = kwargs.get(key, {})
+            setattr(self, key, module_cls.build(self, **module_kw))
+
+        atexit.register(self.destroy_modules)
+
+    @property
+    def modules(self) -> list[tuple[str, OneModule]]:
+        """Возвращает все собранные модули.
+
+        Returns:
+            Список пар (имя модуля, экземпляр модуля).
+        """
+        return [
+            (key, module) for key, module in vars(self).items() if isinstance(module, OneModule)
+        ]
+
+    def destroy_modules(self) -> None:
+        """Освобождает ресурсы модулей в обратном порядке.
+
+        Обратный порядок нужен, чтобы config/logger освобождались последними:
+        от их работы зависят остальные модули. Вызывается через atexit.
+        """
+        for _, module in reversed(self.modules):
+            module.destroy()
+
+    def _download_once(self, url: str, timeout: int) -> tuple[int, float]:
+        """Скачивает файл потоково и замеряет время запроса.
+
+        Args:
+            url: адрес файла/картинки для скачивания.
+            timeout: таймаут одного запроса, секунд.
+
+        Returns:
+            Кортеж (размер в байтах, время в секундах).
+
+        Raises:
+            RequestError: при сетевой ошибке, таймауте или HTTP-статусе.
+        """
+        start = time.perf_counter()
+        try:
+            with httpx.stream("GET", url, timeout=timeout) as response:
+                response.raise_for_status()
+                size = 0
+                for _chunk in response.iter_bytes():
+                    size += len(_chunk)
+        except httpx.HTTPError as exc:
+            raise RequestError(str(exc)) from exc
+        elapsed = time.perf_counter() - start
+        return size, elapsed
+
+    def _failed_result(self, exc: Exception) -> dict[str, object]:
+        """Формирует результат неудачного запроса.
+
+        Args:
+            exc: исключение, из-за которого запрос не удался.
+
+        Returns:
+            Словарь результата с нулевыми метриками и текстом ошибки.
+        """
+        return {"size_bytes": 0, "elapsed_s": 0.0, "speed_mb_s": 0.0, "error": str(exc)}
+
+    def measure_speed(self, url: str, runs: int = 10, timeout: int = 60) -> dict:
+        """Последовательно выполняет runs запросов и собирает результат.
+
+        Неудачные запросы не прерывают замер: их результат помечается ошибкой
+        в per_request, но не учитывается в среднем времени и объёме.
+
+        Args:
+            url: адрес файла/картинки для скачивания.
+            runs: количество последовательных запросов.
+            timeout: таймаут одного запроса, секунд.
+
+        Returns:
+            Словарь с ключами url, runs, runs_ok, total_bytes, avg_time_s,
+            avg_speed_mb_s и per_request (детали по каждому запросу).
+        """
+        results: list[dict[str, object]] = []
+        total_bytes = 0
+
+        self.logger.info("measure start url=%s runs=%d timeout=%d", url, runs, timeout)
+        for _ in range(runs):
+            try:
+                size, elapsed = self._download_once(url, timeout)
+                results.append(
+                    {
+                        "size_bytes": size,
+                        "elapsed_s": elapsed,
+                        "speed_mb_s": size / elapsed / 1024 / 1024,
+                        "error": None,
+                    }
+                )
+                total_bytes += size
+            except RequestError as exc:
+                results.append(self._failed_result(exc))
+
+        ok = [r for r in results if r["error"] is None]
+        if ok:
+            avg_time = sum(r["elapsed_s"] for r in ok) / len(ok)
+            total_time = sum(r["elapsed_s"] for r in ok)
+            avg_speed = total_bytes / total_time / 1024 / 1024
+        else:
+            avg_time = 0.0
+            avg_speed = 0.0
+
+        if ok:
+            self.logger.info(
+                "measure done ok=%d/%d total_bytes=%d avg_speed=%.2f MB/s",
+                len(ok),
+                runs,
+                total_bytes,
+                avg_speed,
+            )
+        return {
+            "url": url,
+            "runs": runs,
+            "runs_ok": len(ok),
+            "total_bytes": total_bytes,
+            "avg_time_s": avg_time,
+            "avg_speed_mb_s": avg_speed,
+            "per_request": results,
+        }

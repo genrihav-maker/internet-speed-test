@@ -50,10 +50,20 @@ def main() -> None:
     log = mm.logger
 
     settings = mm.config.measure
-    runs = args.runs if args.runs else settings.default_runs
-    timeout = args.timeout if args.timeout else settings.default_timeout
+    runs = args.runs if args.runs is not None else settings.default_runs
+    timeout = args.timeout if args.timeout is not None else settings.default_timeout
     if runs <= 0 or timeout <= 0:
         log.error("Ошибка: runs и timeout должны быть больше нуля.")
+        sys.exit(1)
+    if runs > settings.max_runs:
+        log.error("Ошибка: runs (%d) не может превышать max_runs (%d).", runs, settings.max_runs)
+        sys.exit(1)
+    if timeout > settings.max_timeout:
+        log.error(
+            "Ошибка: timeout (%d) не может превышать max_timeout (%d).",
+            timeout,
+            settings.max_timeout,
+        )
         sys.exit(1)
 
     result = mm.measure_speed(args.url, runs, timeout)

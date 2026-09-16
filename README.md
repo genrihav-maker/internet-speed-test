@@ -38,17 +38,26 @@ uv sync
 
 ## Запуск
 
+Проект поставляется как устанавливаемый пакет (editable-установка через `uv
+sync`), поэтому доступен и console-скрипт:
+
 ```bash
-uv run python -m src.speed_test <URL>                       # 10 запросов (по умолчанию)
-uv run python -m src.speed_test <URL> -n 20                 # 20 запросов
-uv run python -m src.speed_test <URL> -n 10 -t 60           # таймаут одного запроса, сек
-uv run python -m src.speed_test --help
+uv run internet-speed-test <URL>                          # 10 запросов (по умолчанию)
+uv run internet-speed-test <URL> -n 20                    # 20 запросов
+uv run internet-speed-test <URL> -n 10 -t 60              # таймаут одного запроса, сек
+uv run internet-speed-test --help
+```
+
+Эквивалентный вызов через модуль:
+
+```bash
+uv run python -m src.speed_test <URL>
 ```
 
 Пример:
 
 ```bash
-uv run python -m src.speed_test https://speed.hetzner.de/100MB.bin
+uv run internet-speed-test https://speed.hetzner.de/100MB.bin
 ```
 
 Количество запросов по умолчанию — 10 (`measure.default_runs` из `config.d/config.yml`).
@@ -56,8 +65,8 @@ uv run python -m src.speed_test https://speed.hetzner.de/100MB.bin
 Общие флаги:
 
 ```bash
-uv run python -m src.speed_test --version   # печатает версию сервиса
-uv run python -m src.speed_test --name      # печатает имя сервиса
+uv run internet-speed-test --version   # печатает версию сервиса
+uv run internet-speed-test --name      # печатает имя сервиса
 ```
 
 ## Конфигурация
@@ -124,7 +133,8 @@ measure:
 
 1. Для каждого запроса файл скачивается потоково через `httpx.stream`, время
    замеряется через `time.perf_counter` от начала запроса до получения
-   последнего байта.
+   последнего байта. HTTP-редиректы (3xx) обрабатываются автоматически
+   (`follow_redirects=True`).
 2. Скорость одного запроса: `размер / время`.
 3. Средняя скорость: `суммарный объём / суммарное время успешных запросов`.
 
@@ -165,13 +175,18 @@ uv run pytest
 ## Линтинг и форматирование
 
 Проект использует [ruff](https://docs.astral.sh/ruff/) (конфиг в
-`[tool.ruff]`, правила E/F/I/UP/B/W):
+`[tool.ruff]`, правила E/F/I/UP/B/W/D) и [mypy](https://mypy.readthedocs.io/)
+(конфиг в `[tool.mypy]`, включая плагин `pydantic.mypy`):
 
 ```bash
 uv run ruff check .       # lint
 uv run ruff check . --fix # lint + автоисправление
 uv run ruff format .      # форматирование
+uv run mypy src           # проверка типов
 ```
+
+Все проверки (lint, format, mypy, pytest с coverage) прогоняются в CI при
+каждом push/PR (`.github/workflows/ci.yml`, Python 3.12).
 
 ## Версионирование
 
@@ -184,9 +199,12 @@ uv run bumpver show                # текущая версия
 uv run bumpver update --patch     # 1.2.0 -> 1.2.1
 ```
 
-При обновлении bumpver сам правит версию в `pyproject.toml`, создаёт коммит
-(`Bump version ...`) и git-тег (`v<версия>`). Пуш не выполняется (`push = false`),
-запушьте вручную:
+При обновлении bumpver сам правит версию в `pyproject.toml` и
+`src/__init__.py`, создаёт коммит (`бамп версии ...`) и git-тег
+(`v<версия>`). Через `pre_commit_hook` (`scripts/pre_bump_hook.sh`) перед
+коммитом выполняется `uv lock`, поэтому `uv.lock` обновляется и попадает
+в тот же коммит бампа — без отдельных «chore: uv.lock» коммитов.
+Пуш не выполняется (`push = false`), запушьте вручную:
 
 ```bash
 git push origin main --tags

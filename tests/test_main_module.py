@@ -53,6 +53,15 @@ def test_measure_speed_partial_failure(main_module, flaky_server):
     assert sum(1 for r in result["per_request"] if r["error"] is None) == 2
 
 
+def test_measure_speed_follows_redirects(main_module, redirect_server):
+    """302-редирект обрабатывается, данные скачиваются с финального адреса."""
+    result = main_module.measure_speed(redirect_server, runs=1, timeout=10)
+
+    assert result["runs_ok"] == 1
+    assert result["total_bytes"] == 1024 * 1024
+    assert result["per_request"][0]["error"] is None
+
+
 def test_main_module_init_order(main_module):
     """Модули собираются в порядке config -> logger."""
     assert main_module.config.logger.log_level == "info"

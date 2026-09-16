@@ -140,7 +140,7 @@ wheels = [
 
 [[package]]
 name = "internet-speed-test"
-version = "0.0.2"
+version = "0.0.3"
 source = { virtual = "." }
 dependencies = [
     { name = "httpx" },

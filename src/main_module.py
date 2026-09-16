@@ -3,7 +3,7 @@
 import atexit
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, TypedDict
 
 import httpx
 
@@ -13,6 +13,27 @@ from .config import OneConfig
 from .constants import APP_TITLE
 from .exceptions import RequestError
 from .logger import OneLogger
+
+
+class PerRequestResult(TypedDict):
+    """Результат одного запроса замера."""
+
+    size_bytes: int
+    elapsed_s: float
+    speed_mb_s: float
+    error: str | None
+
+
+class MeasureResult(TypedDict):
+    """Итоговый результат замера скорости."""
+
+    url: str
+    runs: int
+    runs_ok: int
+    total_bytes: int
+    avg_time_s: float
+    avg_speed_mb_s: float
+    per_request: list[PerRequestResult]
 
 
 class MainModule:
@@ -97,7 +118,7 @@ class MainModule:
         elapsed = time.perf_counter() - start
         return size, elapsed
 
-    def _failed_result(self, exc: Exception) -> dict[str, object]:
+    def _failed_result(self, exc: Exception) -> PerRequestResult:
         """Формирует результат неудачного запроса.
 
         Args:
@@ -108,7 +129,7 @@ class MainModule:
         """
         return {"size_bytes": 0, "elapsed_s": 0.0, "speed_mb_s": 0.0, "error": str(exc)}
 
-    def measure_speed(self, url: str, runs: int = 10, timeout: int = 60) -> dict:
+    def measure_speed(self, url: str, runs: int = 10, timeout: int = 60) -> MeasureResult:
         """Последовательно выполняет runs запросов и собирает результат.
 
         Неудачные запросы не прерывают замер: их результат помечается ошибкой
@@ -123,7 +144,7 @@ class MainModule:
             Словарь с ключами url, runs, runs_ok, total_bytes, avg_time_s,
             avg_speed_mb_s и per_request (детали по каждому запросу).
         """
-        results: list[dict[str, object]] = []
+        results: list[PerRequestResult] = []
         total_bytes = 0
 
         self.logger.debug("measure start url=%s runs=%d timeout=%d", url, runs, timeout)

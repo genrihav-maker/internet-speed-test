@@ -72,11 +72,10 @@ def main() -> None:
         log.error("Ошибка: ни один запрос не выполнился успешно.")
         sys.exit(1)
 
-    log.info(
-        "Среднее время запроса: %.3f с, скачано: %.2f МБ, скорость: %.2f МБ/с",
-        result["avg_time_s"],
-        result["total_bytes"] / 1024 / 1024,
-        result["avg_speed_mb_s"],
+    print(
+        f"Среднее время запроса: {result['avg_time_s']:.3f} с, "
+        f"скачано: {result['total_bytes'] / 1024 / 1024:.2f} МБ, "
+        f"скорость: {result['avg_speed_mb_s']:.2f} МБ/с"
     )
 
 

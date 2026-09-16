@@ -83,11 +83,13 @@ class OneLogger(OneModule):
             root.removeHandler(handler)
             handler.close()
 
-        stream = logging.StreamHandler(sys.stdout)
-        stream.setLevel(_to_level(settings.stream.log_level, logging.DEBUG))
-        stream.setFormatter(logging.Formatter(settings.stream.log_format or default_format))
-        root.addHandler(stream)
-        self._handlers.append(stream)
+        stream = None
+        if settings.stream is not None:
+            stream = logging.StreamHandler(sys.stdout)
+            stream.setLevel(_to_level(settings.stream.log_level, logging.DEBUG))
+            stream.setFormatter(logging.Formatter(settings.stream.log_format or default_format))
+            root.addHandler(stream)
+            self._handlers.append(stream)
 
         file_handler = None
         if settings.file is not None:
@@ -107,10 +109,11 @@ class OneLogger(OneModule):
 
         self.logger = logging.getLogger(APP_TITLE)
         logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("httpcore").setLevel(logging.WARNING)
         self.info(
             "OneLogger ready: root=%s stream=%s file=%s",
             root.getEffectiveLevel(),
-            stream.level,
+            stream.level if stream is not None else "disabled",
             file_handler.baseFilename if file_handler else "disabled",
         )
         return self

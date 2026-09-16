@@ -61,6 +61,47 @@ def test_logger_without_file_handler(tmp_path):
     assert "TimedRotatingFileHandler" not in handler_types
 
 
+def test_logger_file_only_no_stream(tmp_path, capsys):
+    """Без секции stream логирование идёт только в файл, не в консоль."""
+    log_file = tmp_path / "out.log"
+    cfg_path = tmp_path / "config.yml"
+    cfg_path.write_text(
+        f"logger:\n  log_level: info\n  file:\n    log_level: info\n"
+        f"    path: {log_file}\n"
+        "measure:\n  default_runs: 2\n  max_runs: 3\n"
+        "  default_timeout: 10\n  max_timeout: 30\n",
+        encoding="utf-8",
+    )
+
+    mm = MainModule(config_path=cfg_path)
+    mm.logger.info("file-only-message")
+
+    handler_types = [type(h).__name__ for h in logging.getLogger().handlers]
+    assert "StreamHandler" not in handler_types
+    assert "TimedRotatingFileHandler" in handler_types
+    assert "file-only-message" not in capsys.readouterr().out
+    assert "file-only-message" in log_file.read_text(encoding="utf-8")
+
+
+def test_logger_no_stream_no_file(tmp_path, capsys):
+    """Без stream и file в конфиге хендлеры не добавляются и ничего не пишется."""
+    cfg_path = tmp_path / "config.yml"
+    cfg_path.write_text(
+        "logger:\n  log_level: info\n"
+        "measure:\n  default_runs: 2\n  max_runs: 3\n"
+        "  default_timeout: 10\n  max_timeout: 30\n",
+        encoding="utf-8",
+    )
+
+    mm = MainModule(config_path=cfg_path)
+    mm.logger.info("must-be-silent")
+
+    handler_types = {type(h).__name__ for h in logging.getLogger().handlers}
+    assert "StreamHandler" not in handler_types
+    assert "TimedRotatingFileHandler" not in handler_types
+    assert capsys.readouterr().out == ""
+
+
 def test_logger_stream_level_from_config(tmp_path, capsys):
     """stream.log_level: warn ограничивает вывод только warning+ сообщениями."""
     cfg_path = tmp_path / "config.yml"

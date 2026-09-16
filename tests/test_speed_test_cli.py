@@ -53,14 +53,17 @@ def test_cli_missing_url_exits_2(monkeypatch, capsys):
     assert "не указан url" in capsys.readouterr().err
 
 
-def test_cli_ok(monkeypatch, use_test_main_module, file_server, caplog):
-    """Успешный замер выводит итог со скоростью в МБ/с."""
+def test_cli_ok(monkeypatch, use_test_main_module, file_server, capsys):
+    """Успешный замер печатает итог без лог-префикса, со скоростью в МБ/с."""
     _set_argv(monkeypatch, file_server, "-n", "1", "-t", "10")
 
     speed_test.main()
 
-    assert "скорость" in caplog.text
-    assert "МБ/с" in caplog.text
+    out = capsys.readouterr().out
+    assert "Среднее время запроса: " in out
+    assert "скорость: " in out
+    assert "МБ/с" in out
+    assert " | internet-speed-test | " not in out
 
 
 def test_cli_all_requests_failed_exits_1(monkeypatch, tmp_path, closed_port_url, capsys):
@@ -82,13 +85,13 @@ def test_cli_all_requests_failed_exits_1(monkeypatch, tmp_path, closed_port_url,
     assert "ни один запрос не выполнился успешно" in capsys.readouterr().out
 
 
-def test_cli_defaults_from_config(monkeypatch, use_test_main_module, file_server, caplog):
+def test_cli_defaults_from_config(monkeypatch, use_test_main_module, file_server, capsys):
     """Без -n/-t используются значения по умолчанию из тестового конфига."""
     _set_argv(monkeypatch, file_server)
 
     speed_test.main()
 
-    assert "скачано: 2.00 МБ" in caplog.text
+    assert "скачано: 2.00 МБ" in capsys.readouterr().out
 
 
 @pytest.mark.parametrize(

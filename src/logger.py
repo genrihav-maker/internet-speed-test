@@ -106,6 +106,7 @@ class OneLogger(OneModule):
             self._handlers.append(file_handler)
 
         self.logger = logging.getLogger(APP_TITLE)
+        logging.getLogger("httpx").setLevel(logging.WARNING)
         self.info(
             "OneLogger ready: root=%s stream=%s file=%s",
             root.getEffectiveLevel(),

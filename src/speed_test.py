@@ -58,26 +58,16 @@ def main() -> None:
 
     result = mm.measure_speed(args.url, runs, timeout)
 
-    for i, r in enumerate(result["per_request"], start=1):
-        if r["error"] is not None:
-            log.warning("Запрос %d/%d: ОШИБКА — %s", i, result["runs"], r["error"])
-        else:
-            log.info(
-                "Запрос %d/%d: %.2f МБ за %.3f с (%.2f МБ/с)",
-                i,
-                result["runs"],
-                r["size_bytes"] / 1024 / 1024,
-                r["elapsed_s"],
-                r["speed_mb_s"],
-            )
-
     if result["runs_ok"] == 0:
         log.error("Ошибка: ни один запрос не выполнился успешно.")
         sys.exit(1)
 
-    log.info("Всего скачано: %.2f МБ", result["total_bytes"] / 1024 / 1024)
-    log.info("Среднее время запроса: %.3f с", result["avg_time_s"])
-    log.info("Средняя скорость: %.2f МБ/с", result["avg_speed_mb_s"])
+    log.info(
+        "Среднее время запроса: %.3f с, скачано: %.2f МБ, скорость: %.2f МБ/с",
+        result["avg_time_s"],
+        result["total_bytes"] / 1024 / 1024,
+        result["avg_speed_mb_s"],
+    )
 
 
 if __name__ == "__main__":

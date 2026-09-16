@@ -4,5 +4,6 @@ __pycache__/
 venv/
 .env
 .idea/
+config.d/config.yml
 logs/
 .pytest_cache/

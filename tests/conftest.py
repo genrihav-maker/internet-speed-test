@@ -70,6 +70,25 @@ class _FlakyServer(HTTPServer):
         self.requests = 0
 
 
+class _RedirectHandler(BaseHTTPRequestHandler):
+    """На /start отдаёт 302 на /file.bin, остальные пути — PAYLOAD."""
+
+    def do_GET(self):
+        if self.path == "/start":
+            self.send_response(302)
+            self.send_header("Location", "/file.bin")
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(PAYLOAD)))
+        self.end_headers()
+        self.wfile.write(PAYLOAD)
+
+    def log_message(self, *args):
+        """Подавляет логирование запросов тестового HTTP-сервера."""
+        pass
+
+
 @pytest.fixture(scope="module")
 def file_server():
     """Возвращает URL локального HTTP-сервера, отдающего файл (1 МБ)."""
@@ -93,6 +112,16 @@ def flaky_server():
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     yield f"http://127.0.0.1:{server.server_port}/flaky.bin"
+    server.shutdown()
+
+
+@pytest.fixture(scope="module")
+def redirect_server():
+    """URL, где /start отдаёт 302 на /file.bin с PAYLOAD."""
+    server = _FileServer(("127.0.0.1", 0), _RedirectHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{server.server_port}/start"
     server.shutdown()
 
 

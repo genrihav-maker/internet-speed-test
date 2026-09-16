@@ -108,7 +108,7 @@ class MainModule:
         """
         start = time.perf_counter()
         try:
-            with httpx.stream("GET", url, timeout=timeout) as response:
+            with httpx.stream("GET", url, timeout=timeout, follow_redirects=True) as response:
                 response.raise_for_status()
                 size = 0
                 for _chunk in response.iter_bytes():

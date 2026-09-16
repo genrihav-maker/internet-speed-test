@@ -44,12 +44,15 @@ class FileLogSettings(BaseModel):
 
 
 class LoggerSettings(BaseModel):
-    """Настройки логирования: уровень, формат, stream/file хендлеры."""
+    """Настройки логирования: уровень, формат, stream/file хендлеры.
+
+    Если file не задан, записи в файл не ведутся.
+    """
 
     log_level: str = LOG_LEVEL
     log_format: str = DEFAULT_LOG_FORMAT
     stream: StreamLogSettings = Field(default_factory=StreamLogSettings)
-    file: FileLogSettings = Field(default_factory=FileLogSettings)
+    file: FileLogSettings | None = None
 
 
 class MeasureSettings(BaseModel):

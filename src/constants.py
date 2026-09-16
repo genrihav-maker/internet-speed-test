@@ -9,7 +9,9 @@ CONFIG_PATH = Path(__file__).resolve().parent.parent / "config.d" / "config.yml"
 LOG_LEVEL = "info"
 STREAM_LOG_LEVEL = "debug"
 FILE_LOG_LEVEL = "info"
-LOG_FILE_PATH = "logs/server.log"
+LOG_FILE_PATH = "logs/service.log"
+LOG_ROTATE_WHEN = "midnight"
+LOG_BACKUP_COUNT = 7
 
 DEFAULT_RUNS = 10
 MAX_RUNS = 100

@@ -2,12 +2,17 @@
 
 import logging
 import sys
+from logging.handlers import TimedRotatingFileHandler
 from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .base import OneModule
 from .config import OneConfig
-from .constants import APP_TITLE
+from .constants import (
+    APP_TITLE,
+    LOG_BACKUP_COUNT,
+    LOG_ROTATE_WHEN,
+)
 
 if TYPE_CHECKING:
     from .main_module import MainModule
@@ -84,20 +89,28 @@ class OneLogger(OneModule):
         root.addHandler(stream)
         self._handlers.append(stream)
 
-        log_path = Path(settings.file.path)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_path, encoding="utf-8")
-        file_handler.setLevel(_to_level(settings.file.log_level, logging.INFO))
-        file_handler.setFormatter(logging.Formatter(settings.file.log_format or default_format))
-        root.addHandler(file_handler)
-        self._handlers.append(file_handler)
+        file_handler = None
+        if settings.file is not None:
+            log_path = Path(settings.file.path)
+            log_path.parent.mkdir(parents=True, exist_ok=True)
+            file_handler = TimedRotatingFileHandler(
+                log_path,
+                when=LOG_ROTATE_WHEN,
+                backupCount=LOG_BACKUP_COUNT,
+                encoding="utf-8",
+                delay=True,
+            )
+            file_handler.setLevel(_to_level(settings.file.log_level, logging.INFO))
+            file_handler.setFormatter(logging.Formatter(settings.file.log_format or default_format))
+            root.addHandler(file_handler)
+            self._handlers.append(file_handler)
 
         self.logger = logging.getLogger(APP_TITLE)
         self.info(
             "OneLogger ready: root=%s stream=%s file=%s",
             root.getEffectiveLevel(),
             stream.level,
-            file_handler.level,
+            file_handler.baseFilename if file_handler else "disabled",
         )
         return self
 

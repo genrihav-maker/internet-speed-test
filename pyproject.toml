@@ -1,6 +1,6 @@
 [project]
 name = "internet-speed-test"
-version = "0.0.5"
+version = "0.0.6"
 description = "Замер скорости интернета: CLI-скрипт"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -34,7 +34,7 @@ ignore = ["B008"]
 known-first-party = ["src", "tests"]
 
 [tool.bumpver]
-current_version = "0.0.5"
+current_version = "0.0.6"
 version_pattern = "MAJOR.MINOR.PATCH"
 commit_message = "бамп версии {old_version} -> {new_version}"
 commit = true

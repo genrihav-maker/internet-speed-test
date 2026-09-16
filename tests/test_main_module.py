@@ -41,6 +41,18 @@ def test_measure_speed_single_run(main_module, file_server):
     assert result["total_bytes"] == 1024 * 1024
 
 
+def test_measure_speed_partial_failure(main_module, flaky_server):
+    """Успешные запросы учитываются, неудачные помечаются и не искажают среднее."""
+    result = main_module.measure_speed(flaky_server, runs=3, timeout=10)
+
+    assert result["runs_ok"] == 2
+    assert result["total_bytes"] == 2 * 1024 * 1024
+    assert result["avg_time_s"] > 0
+    assert result["avg_speed_mb_s"] > 0
+    assert sum(1 for r in result["per_request"] if r["error"] is not None) == 1
+    assert sum(1 for r in result["per_request"] if r["error"] is None) == 2
+
+
 def test_main_module_init_order(main_module):
     """Модули собираются в порядке config -> logger."""
     assert main_module.config.logger.log_level == "info"
@@ -63,3 +75,25 @@ def test_modules_discovered_from_typehint():
     """Fromtypehint находит все модули по аннотациям MainModule."""
     hints = OneModule.fromtypehint(MainModule)
     assert hints == {"config": OneConfig, "logger": OneLogger}
+
+
+def test_module_repr():
+    """Каждый модуль имеет представление <ClassName name='...'>."""
+    cfg = OneConfig(path="nope.yml")
+    assert repr(cfg) == "<OneConfig name='config'>"
+
+
+def test_destroy_modules(tmp_path):
+    """destroy_modules() освобождает хендлеры модулей в обратном порядке."""
+    cfg_path = tmp_path / "config.yml"
+    cfg_path.write_text(
+        "logger:\n  stream:\n    log_level: debug\n"
+        "measure:\n  default_runs: 2\n  max_runs: 3\n"
+        "  default_timeout: 10\n  max_timeout: 30\n",
+        encoding="utf-8",
+    )
+    mm = MainModule(config_path=cfg_path)
+
+    mm.destroy_modules()
+
+    assert mm.logger._handlers == []

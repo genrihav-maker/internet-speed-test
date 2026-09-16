@@ -39,8 +39,35 @@ class _FileHandler(BaseHTTPRequestHandler):
         pass
 
 
+class _FlakyHandler(BaseHTTPRequestHandler):
+    """На втором запросе отдаёт 503, остальные — успешные ответы."""
+
+    def do_GET(self):
+        self.server.requests += 1
+        if self.server.requests == 2:
+            self.send_response(503)
+            self.end_headers()
+            return
+        self.send_response(200)
+        self.send_header("Content-Length", str(len(PAYLOAD)))
+        self.end_headers()
+        self.wfile.write(PAYLOAD)
+
+    def log_message(self, *args):
+        """Подавляет логирование запросов тестового HTTP-сервера."""
+        pass
+
+
 class _FileServer(HTTPServer):
     daemon_threads = True
+
+
+class _FlakyServer(HTTPServer):
+    daemon_threads = True
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.requests = 0
 
 
 @pytest.fixture(scope="module")
@@ -57,6 +84,16 @@ def file_server():
 def closed_port_url():
     """Возвращает адрес, на котором гарантированно нет сервера (порт 1)."""
     return "http://127.0.0.1:1/unreachable.bin"
+
+
+@pytest.fixture(scope="module")
+def flaky_server():
+    """URL сервера, у которого проваливается только второй запрос (503)."""
+    server = _FlakyServer(("127.0.0.1", 0), _FlakyHandler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    yield f"http://127.0.0.1:{server.server_port}/flaky.bin"
+    server.shutdown()
 
 
 @pytest.fixture(scope="module")

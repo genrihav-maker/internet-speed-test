@@ -1,0 +1,22 @@
+# Пример конфигурации. Скопируйте в config.yml и отредактируйте под себя:
+#   cp config.yml_example config.yml
+#
+# Формат логгера: logger.log_format задаёт формат по умолчанию,
+# stream.log_format / file.log_format переопределяют его для конкретного хендлера.
+
+logger:
+  log_level: info
+  log_format: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+  stream:
+    log_level: debug
+    log_format: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+  file:
+    log_level: info
+    log_format: "%(asctime)s | %(levelname)-8s | %(name)s | %(message)s"
+    path: logs/server.log
+
+measure:
+  default_runs: 10
+  max_runs: 100
+  default_timeout: 60
+  max_timeout: 600
